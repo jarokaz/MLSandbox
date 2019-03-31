@@ -1,3 +1,4 @@
+
 from absl import flags
 from absl import app
 
@@ -115,9 +116,7 @@ def main(argv):
     del argv #Unused
     
     train_evaluate()
-    #print(FLAGS.train_files)
-    #print(FLAGS.eval_files)
-    
+     
 
 if __name__ == '__main__':
     
