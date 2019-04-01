@@ -1,3 +1,4 @@
+
 from absl import flags
 from absl import app
 
@@ -83,13 +84,14 @@ def train_evaluate():
              )
 
     callbacks = [
-        tf.keras.callbacks.TensorBoard(log_dir=FLAGS['job-dir'].value, update_freq='epoch')
+        #tf.keras.callbacks.TensorBoard(log_dir=FLAGS['job-dir'].value, update_freq='epoch')
+        tf.keras.callbacks.TensorBoard(log_dir=FLAGS['job-dir'].value)
     ]
     
     model.fit(train_dataset,
          epochs=FLAGS.epochs,
          steps_per_epoch=1000,
-         callbacks=callbacks,
+         #callbacks=callbacks,
          validation_data=eval_dataset,
          validation_steps=200)
     
@@ -115,9 +117,7 @@ def main(argv):
     del argv #Unused
     
     train_evaluate()
-    #print(FLAGS.train_files)
-    #print(FLAGS.eval_files)
-    
+     
 
 if __name__ == '__main__':
     
