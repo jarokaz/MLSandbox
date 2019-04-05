@@ -9,6 +9,8 @@ import numpy as np
 from tensorflow.keras import Input, Model
 from tensorflow.keras.layers import Conv2D, MaxPooling2D, GlobalAveragePooling2D, Dropout, Dense, add
 
+import horovod.tensorflow.keras as hvd
+
 #tf.enable_eager_execution()
 
 
@@ -74,27 +76,59 @@ def prepare_datasets():
 
 def train_evaluate():
     
+    # Initialize Horovod
+    hvd.init()
+    
+    # Horovod: pin GPU to be used to process local rank (one GPU per process)
+    config = tf.ConfigProto()
+    config.gpu_options.allow_growth = True
+    config.gpu_options.visible_device_list = str(hvd.local_rank())
+    tf.keras.backend.set_session(tf.Session(config=config))
+    
     train_dataset, eval_dataset = prepare_datasets()
     
     model = toy_resnet_model()
     
-    model.compile(optimizer=tf.keras.optimizers.RMSprop(1e-3),
+    # Wrap an optimizer in Horovod
+    optimizer = hvd.DistributedOptimizer(optimizers.Adadelta())
+  
+    model.compile(optimizer=optimizer,
              loss="categorical_crossentropy",
              metrics=["accuracy"]
              )
 
     callbacks = [
-        #tf.keras.callbacks.TensorBoard(log_dir=FLAGS['job-dir'].value, update_freq='epoch')
-        tf.keras.callbacks.TensorBoard(log_dir=FLAGS['job-dir'].value)
+        # Horovod: broadcast initial variable states from rank 0 to all other processes.
+        # This is necessary to ensure consistent initialization of all workers when
+        # training is started with loaded weights.
+        hvd.callbacks.BroadcastGlobalVariablesCallback(0),
+        # Horovod: average metrics among workers at the end of every epoch.
+        #
+        # Note: This callback must be in the list before the ReduceLROnPlateau,
+        # TensorBoard, or other metrics-based callbacks.
+        hvd.callbacks.MetricAverageCallback()
     ]
+    
+    # Horovod: save checkpoints only on worker 0 (master) to prevent other workers from corrupting them.
+    # Configure Tensorboard and Azure ML Tracking
+    if hvd.rank() == 0:
+        #callbacks.append(tf.keras.callbacks.ModelCheckpoint('./checkpoint-{epoch}.h5'))
+        callbacks.append(tf.keras.callbacks.TensorBoard(log_dir=FLAGS['job-dir'].value, update_freq='epoch'))
     
     model.fit(train_dataset,
          epochs=FLAGS.epochs,
          steps_per_epoch=1000,
-         #callbacks=callbacks,
+         callbacks=callbacks,
          validation_data=eval_dataset,
-         validation_steps=200)
+         validation_steps=200)                    
     
+    # Save the trained model to outputs folder on the master
+    #if hvd.rank() == 0:  
+    #    print("Training completed.")
+    #    os.makedirs('outputs', exist_ok=True)
+    #    model_file = os.path.join('outputs', 'aerial_model_fine_tune.h5')
+    #    model.save(model_file)
+
     
 
 FLAGS = flags.FLAGS

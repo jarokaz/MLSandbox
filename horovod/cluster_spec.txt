@@ -1,0 +1,17 @@
+{
+  "cluster": {
+    "master": [
+      "cmle-training-master-f2b03a97f8-0:2222"
+    ],
+    "worker": [
+      "cmle-training-worker-f2b03a97f8-0:2222",
+      "cmle-training-worker-f2b03a97f8-1:2222"
+    ]
+  },
+  "environment": "cloud",
+  "task": {
+    "type": "master",
+    "index": 0
+  },
+  "job": "{\n \"scale_tier\": \"CUSTOM\",\n \"master_type\": \"standard\",\n \"worker_type\": \"standard\",\n \"worker_count\": \"2\",\n \"region\": \"us-west1\",\n \"master_config\": {\n \"image_uri\": \"gcr.io/sandbox-235500/toyresnet:gpu\"\n },\n \"worker_config\": {\n \"image_uri\": \"gcr.io/sandbox-235500/toyresnet:gpu\"\n }\n}"
+}
